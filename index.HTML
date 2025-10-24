@@ -26,18 +26,16 @@ tr:nth-child(even) { background-color:#f9f9f9; }
 <h1>Buscador y Organizador de Videowalls</h1>
 <div class="container">
 
-  <!-- Buscar por nombre -->
   <div class="section">
     <h3>1️⃣ Buscar por nombre de oficina</h3>
     <textarea id="solicitudes" placeholder="Ejemplo:
 [0001]MEXICO NORTE
-[0051]ZACATECAS
-[0010]QUERETARO"></textarea>
+ACAPULCO, PAPAGAYO
+[1C]MEXICO SUR"></textarea>
     <button onclick="buscarPorNombre()">🔍 Buscar por nombre</button>
     <div id="resultadoNombres"></div>
   </div>
 
-  <!-- Buscar por archivos -->
   <div class="section">
     <h3>2️⃣ Buscar por archivos CSV</h3>
     <input type="file" id="archivos" multiple accept=".csv"/>
@@ -48,14 +46,13 @@ tr:nth-child(even) { background-color:#f9f9f9; }
 
 </div>
 
-<!-- JSZip desde CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
 <script>
-// Base de datos
-const base = [
-   ["TCUS0","ACAPULCO CUAUHTEMOC SALA 1","MAGIC"],
+// --- BASE DE DATOS (SIN CAMBIOS) ---
+const base = [   
+  ["TCUS0","ACAPULCO CUAUHTEMOC SALA 1","MAGIC"],
   ["ALUS0","ACAPULCO PAPAGAYO SALA UNICA","MAGIC"],
   ["APVS0","AG. TLAQUEPAQUE SALA UNICA","MAX"],
   ["AGSS0","AGUASCALIENTES SALA 1","MAX"],
@@ -122,75 +119,81 @@ const base = [
   ["APNS1","ZAPOPAN P NORTE SALA 1","MAX"],
   ["ZIHS0","ZIHUATANEJO SALA 1","MAGIC"],
   ["SJLS0","SAN JUAN DE LOS LAGOS SALA UNICA","MAX"]
-];
+  ];
 
-let archivosSubidos = []; // Para almacenar archivos seleccionados
+let archivosSubidos = [];
 
-// Buscar por nombre (con soporte para códigos entre corchetes)
-function buscarPorNombre(){
-  const solicitudesTexto = document.getElementById('solicitudes').value.trim();
-  const resultadoDiv = document.getElementById('resultadoNombres');
-  if(!solicitudesTexto){ alert("Ingresa al menos un nombre de oficina."); return; }
-
-  const solicitudes = solicitudesTexto.split(/\n/).map(s=>{
-    // Eliminar código entre corchetes si existe
-    return s.replace(/^\[\d+\]/,"").trim().toUpperCase();
-  }).filter(s=>s);
-
-  let tabla = `<table><thead><tr><th>Oficina Solicitada</th><th>Coincide</th><th>Proveedores</th><th># Archivos</th></tr></thead><tbody>`;
-
-  solicitudes.forEach(oficina=>{
-    const coincidencias = base.filter(b=>b[1].toUpperCase().includes(oficina));
-    if(coincidencias.length>0){
-      const proveedores = [...new Set(coincidencias.map(c=>c[2]))].join(", ");
-      tabla += `<tr><td>${oficina}</td><td class="match">✅ Sí</td><td>${proveedores}</td><td>${coincidencias.length}</td></tr>`;
-    } else {
-      tabla += `<tr><td>${oficina}</td><td class="no-match">❌ No</td><td>—</td><td>0</td></tr>`;
-    }
-  });
-  tabla += "</tbody></table>";
-  resultadoDiv.innerHTML = tabla;
+function limpiarNombre(texto){
+  return texto
+    .replace(/^\[[^\]]+\]/, "") // quita códigos como [0001]
+    .replace(/,/g, " ")          // reemplaza comas como ACAPULCO, PAPAGAYO
+    .replace(/\s+/g, " ")        // espacios dobles
+    .trim()
+    .toUpperCase();
 }
 
-// Buscar por archivos
+// --- BUSCAR POR NOMBRE ---
+function buscarPorNombre(){
+  const solicitudes = document.getElementById("solicitudes").value.trim().split("\n");
+  const resultado = document.getElementById("resultadoNombres");
+  resultado.innerHTML = "";
+
+  let tabla = `<table><thead><tr><th>Oficina buscada</th><th>Coincidencias en Base de Datos</th></tr></thead><tbody>`;
+
+  solicitudes.forEach(linea=>{
+    const oficina = limpiarNombre(linea);
+    if(!oficina) return;
+
+    const coincidencias = base.filter(b => b[1].toUpperCase().includes(oficina));
+    
+    if(coincidencias.length === 0){
+      tabla += `<tr><td>${oficina}</td><td class="no-match">❌ No encontrada</td></tr>`;
+    } else {
+      const lista = coincidencias.map(c => `${c[1]} — <strong>${c[2]}</strong>`).join("<br>");
+      tabla += `<tr><td>${oficina}</td><td class="match">✅<br>${lista}</td></tr>`;
+    }
+  });
+
+  tabla += "</tbody></table>";
+  resultado.innerHTML = tabla;
+}
+
+// --- BUSCAR POR ARCHIVOS ---
 function buscarPorArchivos(){
-  const input = document.getElementById('archivos');
-  const resultadoDiv = document.getElementById('resultadoArchivos');
-  const archivos = input.files;
-  if(!archivos.length){ alert("Selecciona uno o más archivos."); return; }
+  const archivos = document.getElementById("archivos").files;
+  const resultado = document.getElementById("resultadoArchivos");
+  resultado.innerHTML = "";
+  if(!archivos.length) return;
 
-  archivosSubidos = Array.from(archivos); // Guardamos para ZIP
+  archivosSubidos = Array.from(archivos);
 
-  let tabla = `<table><thead><tr><th>Archivo</th><th>Código detectado</th><th>Nombre Completo</th><th>Proveedor</th><th>Coincide</th></tr></thead><tbody>`;
+  let tabla = `<table><thead><tr><th>Archivo</th><th>Código</th><th>Nombre Completo</th><th>Proveedor</th><th>Estado</th></tr></thead><tbody>`;
 
   archivosSubidos.forEach(archivo=>{
-    const nombre = archivo.name.split('.')[0].toUpperCase().trim();
-    const encontrado = base.find(b=>b[0]===nombre);
-    if(encontrado){
-      tabla += `<tr><td>${archivo.name}</td><td>${nombre}</td><td>${encontrado[1]}</td><td>${encontrado[2]}</td><td class="match">✅ Sí</td></tr>`;
+    const codigo = archivo.name.replace(/\s*\(.*\)/,"").split('.')[0].toUpperCase();
+    const match = base.find(b => b[0] === codigo);
+    if(match){
+      tabla += `<tr><td>${archivo.name}</td><td>${codigo}</td><td>${match[1]}</td><td>${match[2]}</td><td class="match">✅</td></tr>`;
     } else {
-      tabla += `<tr><td>${archivo.name}</td><td>${nombre}</td><td>—</td><td>—</td><td class="no-match">❌ No encontrado</td></tr>`;
+      tabla += `<tr><td>${archivo.name}</td><td>${codigo}</td><td>—</td><td>—</td><td class="no-match">❌</td></tr>`;
     }
   });
+
   tabla += "</tbody></table>";
-  resultadoDiv.innerHTML = tabla;
+  resultado.innerHTML = tabla;
 }
 
-// Descargar ZIP por proveedor
+// --- DESCARGAR ZIP ---
 function descargarZip(){
-  if(archivosSubidos.length===0){ alert("No hay archivos importados."); return; }
-
+  if(!archivosSubidos.length) return alert("No hay archivos procesados.");
   const zip = new JSZip();
   archivosSubidos.forEach(archivo=>{
-    const nombre = archivo.name.split('.')[0].toUpperCase().trim();
-    const encontrado = base.find(b=>b[0]===nombre);
-    const proveedor = encontrado ? encontrado[2] : "SIN_PROVEEDOR";
+    const codigo = archivo.name.replace(/\s*\(.*\)/,"").split('.')[0].toUpperCase();
+    const match = base.find(b => b[0] === codigo);
+    const proveedor = match ? match[2] : "SIN_PROVEEDOR";
     zip.folder(proveedor).file(archivo.name, archivo);
   });
-
-  zip.generateAsync({type:"blob"}).then(function(content){
-    saveAs(content, "Archivos_Videowalls.zip");
-  });
+  zip.generateAsync({type:"blob"}).then(c=>saveAs(c,"Archivos_Videowalls.zip"));
 }
 </script>
 </body>
