@@ -31,7 +31,7 @@ tr:nth-child(even) { background-color:#f9f9f9; }
     <textarea id="solicitudes" placeholder="Ejemplo:
 [0001]MEXICO NORTE
 ACAPULCO, PAPAGAYO
-[1C]MEXICO SUR"></textarea>
+CD. JUAREZ"></textarea>
     <button onclick="buscarPorNombre()">🔍 Buscar por nombre</button>
     <div id="resultadoNombres"></div>
   </div>
@@ -50,7 +50,7 @@ ACAPULCO, PAPAGAYO
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
 <script>
-// --- BASE DE DATOS (SIN CAMBIOS) ---
+// --- BASE DE DATOS ---
 const base = [   
   ["TCUS0","ACAPULCO CUAUHTEMOC SALA 1","MAGIC"],
   ["ALUS0","ACAPULCO PAPAGAYO SALA UNICA","MAGIC"],
@@ -60,7 +60,7 @@ const base = [
   ["CELS0","CELAYA SALA UNICA","MAX"],
   ["CHIS0","CHIHUAHUA SALA UNICA","TECNOMANIA"],
   ["CHGS0","CHILPANCINGO SALA 1","MAGIC"],
-  ["JUAS0","CIUDAD JUAREZ SALA  UNICA","TECNOMANIA"],
+  ["JUAS0","CIUDAD JUAREZ SALA UNICA","TECNOMANIA"],
   ["JUAS2","CIUDAD JUAREZ SALA 2","TECNOMANIA"],
   ["JUAS3","CIUDAD JUAREZ SALA 3","TECNOMANIA"],
   ["CUES0","CUERNAVACA SALA UNICA","MAX"],
@@ -94,7 +94,6 @@ const base = [
   ["MTYS0","MONTERREY SALA UNICA","MAX"],
   ["MORS0","MORELIA SALA UNICA","MAX"],
   ["MRNS0","MOROLEON SALA UNICA","MAX"],
-  ["LARS0","NUEVO LAREDO SALA UNICA","TECNOMANIA"],
   ["PCHS0","PACHUCA SALA UNICA","MAX"],
   ["UGBS0","PISTOLAS MENESES UNICA","MAX"],
   ["POZS0","POZA RICA SALA UNICA","STRATECH"],
@@ -113,21 +112,19 @@ const base = [
   ["ZLTS1","TEPOTZOTLAN SALA 1","MAX"],
   ["TIJS0","TIJUANA SALA UNICA","TECNOMANIA"],
   ["TOLS0","TOLUCA SALA UNICA","MAX"],
-  ["TORS1","TORREON SALA 1","MAX"],
-  ["TGOS0","TULANCINGO SALA UNICA","TECNOMANIA"],
-  ["ZACS0","ZACATECAS SALA UNICA","MAX"],
-  ["APNS1","ZAPOPAN P NORTE SALA 1","MAX"],
-  ["ZIHS0","ZIHUATANEJO SALA 1","MAGIC"],
-  ["SJLS0","SAN JUAN DE LOS LAGOS SALA UNICA","MAX"]
-  ];
+  ["TORS1","TORREON SALA 1","MAX"]
+];
 
+// --- FUNCIONES ---
 let archivosSubidos = [];
 
 function limpiarNombre(texto){
   return texto
-    .replace(/^\[[^\]]+\]/, "") // quita códigos como [0001]
-    .replace(/,/g, " ")          // reemplaza comas como ACAPULCO, PAPAGAYO
-    .replace(/\s+/g, " ")        // espacios dobles
+    .replace(/^\[[^\]]+\]/, "")   // quita códigos [0001]
+    .replace(/,/g, " ")            // reemplaza comas
+    .replace(/\./g,"")             // elimina puntos
+    .replace(/\s+/g, " ")          // espacios múltiples
+    .replace(/\bCD\b/gi, "CIUDAD") // reemplaza CD por CIUDAD
     .trim()
     .toUpperCase();
 }
@@ -145,12 +142,12 @@ function buscarPorNombre(){
     if(!oficina) return;
 
     const coincidencias = base.filter(b => b[1].toUpperCase().includes(oficina));
-    
+
     if(coincidencias.length === 0){
-      tabla += `<tr><td>${oficina}</td><td class="no-match">❌ No encontrada</td></tr>`;
+      tabla += `<tr><td>${linea.trim()}</td><td class="no-match">❌ No encontrada</td></tr>`;
     } else {
       const lista = coincidencias.map(c => `${c[1]} — <strong>${c[2]}</strong>`).join("<br>");
-      tabla += `<tr><td>${oficina}</td><td class="match">✅<br>${lista}</td></tr>`;
+      tabla += `<tr><td>${linea.trim()}</td><td class="match">✅<br>${lista}</td></tr>`;
     }
   });
 
